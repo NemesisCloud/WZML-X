@@ -22,6 +22,13 @@ from bot.helper.ext_utils.bot_utils import get_readable_time, is_share_link, is_
 from bot.helper.ext_utils.exceptions import DirectDownloadLinkException
 from bot.helper.ext_utils.help_messages import PASSWORD_ERROR_MESSAGE
 
+import cfscrape
+from requests.exceptions import RequestException
+from time import sleep
+from re import search
+from urllib.parse import unquote
+from os import path
+
 _caches = {}
 
 fmed_list = ['fembed.net', 'fembed.com', 'femax20.com', 'fcdn.stream', 'feurl.com', 'layarkacaxxi.icu',
@@ -322,12 +329,19 @@ def all_debrid(url: str, tor=False):
     return details
 
 
+# Proxy configuration for warproxy
+proxy_dict = {
+    'http': 'http://127.0.0.1:1081',
+    'https': 'http://127.0.0.1:1081',
+}
+
+
 def real_debrid(url: str, tor=False):
     """ Real-Debrid Link Extractor (VPN Maybe Needed)
     Based on Real-Debrid v1 API (Few VPS) [Without VPN]"""
     def __unrestrict(url, tor=False):
         cget = create_scraper().request
-        resp = cget('POST', f"https://api.real-debrid.com/rest/1.0/unrestrict/link?auth_token={config_dict['REAL_DEBRID_API']}", data={'link': url})
+        resp = cget('POST', f"https://api.real-debrid.com/rest/1.0/unrestrict/link?auth_token={config_dict['REAL_DEBRID_API']}", data={'link': url}, proxies=proxy_dict)
         if resp.status_code == 200:
             if tor:
                 _res = resp.json()
@@ -340,22 +354,22 @@ def real_debrid(url: str, tor=False):
     def __addMagnet(magnet):
         cget = create_scraper().request
         hash_ = search(r'(?<=xt=urn:btih:)[a-zA-Z0-9]+', magnet).group(0)
-        resp = cget('GET', f"https://api.real-debrid.com/rest/1.0/torrents/instantAvailability/{hash_}?auth_token={config_dict['REAL_DEBRID_API']}")
+        resp = cget('GET', f"https://api.real-debrid.com/rest/1.0/torrents/instantAvailability/{hash_}?auth_token={config_dict['REAL_DEBRID_API']}", proxies=proxy_dict)
         if resp.status_code != 200 or len(resp.json()[hash_.lower()]['rd']) == 0:
             return magnet
-        resp = cget('POST', f"https://api.real-debrid.com/rest/1.0/torrents/addMagnet?auth_token={config_dict['REAL_DEBRID_API']}", data={'magnet': magnet})
+        resp = cget('POST', f"https://api.real-debrid.com/rest/1.0/torrents/addMagnet?auth_token={config_dict['REAL_DEBRID_API']}", data={'magnet': magnet}, proxies=proxy_dict)
         if resp.status_code == 201:
             _id = resp.json()['id']
         else:
             raise DirectDownloadLinkException(f"ERROR: {resp.json()['error']}")
         if _id:
-            _file = cget('POST', f"https://api.real-debrid.com/rest/1.0/torrents/selectFiles/{_id}?auth_token={config_dict['REAL_DEBRID_API']}", data={'files': 'all'})
+            _file = cget('POST', f"https://api.real-debrid.com/rest/1.0/torrents/selectFiles/{_id}?auth_token={config_dict['REAL_DEBRID_API']}", data={'files': 'all'}, proxies=proxy_dict)
             if _file.status_code != 204:
                 raise DirectDownloadLinkException(f"ERROR: {resp.json()['error']}")
             
         contents = {'links': []}
         while len(contents['links']) == 0:
-            _res = cget('GET', f"https://api.real-debrid.com/rest/1.0/torrents/info/{_id}?auth_token={config_dict['REAL_DEBRID_API']}")
+            _res = cget('GET', f"https://api.real-debrid.com/rest/1.0/torrents/info/{_id}?auth_token={config_dict['REAL_DEBRID_API']}", proxies=proxy_dict)
             if _res.status_code == 200:
                 contents = _res.json()
             else:
