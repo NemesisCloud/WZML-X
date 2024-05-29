@@ -329,7 +329,25 @@ def all_debrid(url: str, tor=False):
     return details
 
 
-# Proxy configuration for warproxy
+
+# idk which one is correct @majorx 1st format or 2nd format ig 1st format will go well with nord vpn or seedbox proxy test it
+# add , proxies=proxy_dictto the debrid we have and test it.
+# Dont forget to commant 1 of the proxy_dict 
+
+
+# Your proxy authentication credentials
+proxy_username = 'your_username'
+proxy_password = 'your_password'
+
+# 1 Proxy configuration for warproxy with authentication
+proxy_dict = {
+    'http': f'socks5://{proxy_username}:{proxy_password}@warproxy_container:1080',
+    'https': f'socks5://{proxy_username}:{proxy_password}@warproxy_container:1080',
+}
+
+
+
+# 2. Proxy configuration for warproxy
 proxy_dict = {
     'http': 'http://127.0.0.1:1081',
     'https': 'http://127.0.0.1:1081',
